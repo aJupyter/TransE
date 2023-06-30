@@ -11,9 +11,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
-import operator # operator模块输出一系列对应Python内部操作符的函数
+import operator  # operator模块输出一系列对应Python内部操作符的函数
 
 entities2id = {}
+
 relations2id = {}
 relation_tph = {}
 relation_hpt = {}
@@ -30,7 +31,7 @@ def dataloader(file1, file2, file3, file4):
     entity = []
     relation = []
     with open(file2, 'r') as f1, open(file3, 'r') as f2:
-        lines1 = f1.readlines() # 读取所有行
+        lines1 = f1.readlines()  # 读取所有行
         ''' WN18/entity2id.txt 内容
         03964744	0
         04371774	1
@@ -55,7 +56,6 @@ def dataloader(file1, file2, file3, file4):
             relations2id[line[0]] = line[1]
             relation.append(int(line[1]))
 
-
     triple_list = []
     relation_head = {}
     relation_tail = {}
@@ -75,7 +75,6 @@ def dataloader(file1, file2, file3, file4):
             h_ = int(entities2id[triple[0]])
             r_ = int(relations2id[triple[1]])
             t_ = int(entities2id[triple[2]])
-
 
             triple_list.append([h_, r_, t_])
             '''relation_head
@@ -98,10 +97,10 @@ def dataloader(file1, file2, file3, file4):
             '''relation_tail
             {
                 r1:{
-                    h1:1,
-                    h2:2,
+                    t1:1,
+                    t2:2,
                     },
-                r2:{h:1},
+                r2:{t1:1},
             }
             '''
             if r_ in relation_tail:
@@ -116,8 +115,8 @@ def dataloader(file1, file2, file3, file4):
     for r_ in relation_head:
         sum1, sum2 = 0, 0
         for head in relation_head[r_]:
-            sum1 += 1 # head_entity的种类
-            sum2 += relation_head[r_][head] # 一个关系对应的head_entity的数量
+            sum1 += 1  # head_entity的种类
+            sum2 += relation_head[r_][head]  # 一个关系对应的head_entity的数量
         tph = sum2 / sum1
         relation_tph[r_] = tph
 
@@ -141,12 +140,11 @@ def dataloader(file1, file2, file3, file4):
             r_ = int(relations2id[triple[1]])
             t_ = int(entities2id[triple[2]])
 
-
             valid_triple_list.append([h_, r_, t_])
 
     # Complete load. entity : 40943 , relation : 18 , train triple : 141442, , valid triple : 5000
     print("Complete load. entity : %d , relation : %d , train triple : %d, , valid triple : %d" % (
-    len(entity), len(relation), len(triple_list), len(valid_triple_list)))
+        len(entity), len(relation), len(triple_list), len(valid_triple_list)))
 
     return entity, relation, triple_list, valid_triple_list
 
@@ -158,10 +156,11 @@ def norm_l1(h, r, t):
 def norm_l2(h, r, t):
     return np.sum(np.square(h + r - t))
 
+
 class E(nn.Module):
     def __init__(self, entity_num, relation_num, dim, margin, norm, C):
         super(E, self).__init__()
-        self.entity_num = entity_num 
+        self.entity_num = entity_num
         self.relation_num = relation_num
         self.dim = dim
         self.margin = margin
@@ -173,9 +172,9 @@ class E(nn.Module):
         embedding_dim：每个嵌入向量的维度。
         '''
         self.ent_embedding = torch.nn.Embedding(num_embeddings=self.entity_num,
-                                                          embedding_dim=self.dim).cuda()
+                                                embedding_dim=self.dim).cuda()
         self.rel_embedding = torch.nn.Embedding(num_embeddings=self.relation_num,
-                                                           embedding_dim=self.dim).cuda()
+                                                embedding_dim=self.dim).cuda()
 
         self.loss_F = nn.MarginRankingLoss(self.margin, reduction="mean").cuda()
 
@@ -187,7 +186,6 @@ class E(nn.Module):
         nn.init.xavier_uniform_(self.rel_embedding.weight.data)
         self.normalization_rel_embedding()
         self.normalization_ent_embedding()
-
 
     def normalization_ent_embedding(self):
         norm = self.ent_embedding.weight.detach().cpu().numpy()
@@ -210,14 +208,14 @@ class E(nn.Module):
         # 如 下面sum中 r_norm * h 结果是一个1024 *50的矩阵（2维张量） sum在dim的结果就变成了 1024的向量（1位张量） 如果想和r_norm对应元素两两相乘
         # 就需要sum的结果也是2维张量 因此需要使用keepdim= True报纸张量的维度不变
         # 另外关于 dim 等于几表示张量的第几个维度，从0开始计数，可以理解为张量的最开始的第几个左括号，具体可以参考这个https://www.cnblogs.com/flix/p/11262606.html
-        head = self.ent_embedding(h)
-        rel = self.rel_embedding(r)
-        tail = self.ent_embedding(t)
+        head = self.ent_embedding(h) # torch.Size([4800, 50])
+        rel = self.rel_embedding(r) # torch.Size([4800, 50])
+        tail = self.ent_embedding(t) # torch.Size([4800, 50])
 
         distance = head + rel - tail
         # dim = -1表示的是维度的最后一维 比如如果一个张量有3维 那么 dim = 2 = -1， dim = 0 = -3
 
-        score = torch.norm(distance, p = self.norm, dim=1)
+        score = torch.norm(distance, p=self.norm, dim=1) # torch.Size([4800])
         return score
 
     def test_distance(self, h, r, t):
@@ -225,7 +223,6 @@ class E(nn.Module):
         head = self.ent_embedding(h.cuda())
         rel = self.rel_embedding(r.cuda())
         tail = self.ent_embedding(t.cuda())
-
 
         distance = head + rel - tail
         # dim = -1表示的是维度的最后一维 比如如果一个张量有3维 那么 dim = 2 = -1， dim = 0 = -3
@@ -240,11 +237,12 @@ class E(nn.Module):
     这个函数的输入是嵌入张量，输出是一个标量值，表示计算出来的损失。
     该函数使用PyTorch张量操作和自动求导功能实现。
     '''
+
     def scale_loss(self, embedding):
         return torch.sum(
             torch.max(
-            torch.sum(embedding ** 2, dim=1, keepdim=True)-torch.FloatTensor([1.0]).cuda(),
-            torch.FloatTensor([0.0]).cuda()
+                torch.sum(embedding ** 2, dim=1, keepdim=True) - torch.FloatTensor([1.0]).cuda(),
+                torch.FloatTensor([0.0]).cuda()
             ))
 
     def forward(self, current_triples, corrupted_triples):
@@ -257,8 +255,8 @@ class E(nn.Module):
         '''
         h, r, t = torch.chunk(current_triples, 3, dim=1)
         h_c, r_c, t_c = torch.chunk(corrupted_triples, 3, dim=1)
-        
-        h = torch.squeeze(h, dim=1).cuda()
+
+        h = torch.squeeze(h, dim=1).cuda() # torch.Size([4800, 1]) -> torch.Size([4800])
         r = torch.squeeze(r, dim=1).cuda()
         t = torch.squeeze(t, dim=1).cuda()
         h_c = torch.squeeze(h_c, dim=1).cuda()
@@ -270,8 +268,8 @@ class E(nn.Module):
         pos = self.distance(h, r, t)
         neg = self.distance(h_c, r_c, t_c)
 
-        entity_embedding = self.ent_embedding(torch.cat([h, t, h_c, t_c]).cuda())
-        relation_embedding = self.rel_embedding(torch.cat([r, r_c]).cuda())
+        entity_embedding = self.ent_embedding(torch.cat([h, t, h_c, t_c]).cuda()) # torch.Size([19200, 50])
+        relation_embedding = self.rel_embedding(torch.cat([r, r_c]).cuda()) # torch.Size([9600, 50])
 
         # loss_F = max(0, -y*(x1-x2) + margin)
         # loss1 = torch.sum(torch.relu(pos - neg + self.margin))
@@ -280,20 +278,22 @@ class E(nn.Module):
 
         ent_scale_loss = self.scale_loss(entity_embedding)
         rel_scale_loss = self.scale_loss(relation_embedding)
-        return loss + self.C * (ent_scale_loss/len(entity_embedding) + rel_scale_loss/len(relation_embedding))
+        return loss + self.C * (ent_scale_loss / len(entity_embedding) + rel_scale_loss / len(relation_embedding))
+
 
 class TransE:
-    def __init__(self, entity, relation, triple_list, embedding_dim=50, lr=0.01, margin=1.0, norm=1, C = 1.0, valid_triple_list = None):
-        self.entities = entity # 实体id列表
-        self.relations = relation # 关系id列表
-        self.triples = triple_list # [h,r,t]
-        self.dimension = embedding_dim # 嵌入的维度
-        self.learning_rate = lr 
+    def __init__(self, entity, relation, triple_list, embedding_dim=50, lr=0.01, margin=1.0, norm=1, C=1.0,
+                 valid_triple_list=None):
+        self.entities = entity  # 实体id列表
+        self.relations = relation  # 关系id列表
+        self.triples = triple_list  # [h,r,t]
+        self.dimension = embedding_dim  # 嵌入的维度
+        self.learning_rate = lr
         self.margin = margin
         self.norm = norm
         self.loss = 0.0
         self.valid_loss = 0.0
-        self.valid_triples = valid_triple_list # 验证三元组列表
+        self.valid_triples = valid_triple_list  # 验证三元组列表
         self.train_loss = []
         self.validation_loss = []
 
@@ -306,44 +306,42 @@ class TransE:
         self.optim = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         # self.optim = optim.SGD(self.model.parameters(), lr=self.learning_rate)
 
-
     def insert_pre_data(self, file1, file2):
         entity_dic = {}
         relation = {}
         with codecs.open(file1, 'r') as f1, codecs.open(file2, 'r') as f2:
-          lines1 = f1.readlines()
-          lines2 = f2.readlines()
-          for line in lines1:
-              line = line.strip().split('\t')
-              if len(line) != 2:
-                  continue
-              entity_dic[int(line[0])] = json.loads(line[1])
+            lines1 = f1.readlines()
+            lines2 = f2.readlines()
+            for line in lines1:
+                line = line.strip().split('\t')
+                if len(line) != 2:
+                    continue
+                entity_dic[int(line[0])] = json.loads(line[1])
 
-          for line in lines2:
-              line = line.strip().split('\t')
-              if len(line) != 2:
-                  continue
-              relation[int(line[0])] = json.loads(line[1])
+            for line in lines2:
+                line = line.strip().split('\t')
+                if len(line) != 2:
+                    continue
+                relation[int(line[0])] = json.loads(line[1])
 
         self.model.input_pre_transe(entity_dic, relation)
 
     def insert_test_data(self, file1, file2, file3):
-        self.insert_pre_data(file1, file2)
+        self.insert_pre_data(file1, file2) # 加载嵌入权重
 
         triple_list = []
         with codecs.open(file3, 'r') as f4:
-          content = f4.readlines()
-          for line in content:
-              triple = line.strip().split("\t")
-              if len(triple) != 3:
-                  continue
+            content = f4.readlines()
+            for line in content:
+                triple = line.strip().split("\t")
+                if len(triple) != 3:
+                    continue
 
-              head = int(entities2id[triple[0]])
-              relation = int(relations2id[triple[1]])
-              tail = int(entities2id[triple[2]])
+                head = int(entities2id[triple[0]])
+                relation = int(relations2id[triple[1]])
+                tail = int(entities2id[triple[2]])
 
-
-              triple_list.append([head, relation, tail])
+                triple_list.append([head, relation, tail])
 
         self.test_triples = triple_list
 
@@ -357,11 +355,11 @@ class TransE:
                 self.validation_loss = json.loads(line[1])
         print(self.train_loss, self.validation_loss)
 
-    def training_run(self, epochs=20, batch_size=400, out_file_title = ''):
+    def training_run(self, epochs=20, batch_size=400, out_file_title=''):
         # n_batches：一个epoch要进行几次优化
         n_batches = int(len(self.triples) / batch_size)
         valid_batch = int(len(self.valid_triples) / batch_size) + 1
-        print("batch size: ", n_batches, "valid_batch: " , valid_batch)
+        print("n_batchs: ", n_batches, "valid_batch: ", valid_batch)
 
         for epoch in range(epochs):
             start = time.time()
@@ -370,12 +368,12 @@ class TransE:
             # Normalise the embedding of the entities to 1
             for batch in range(n_batches):
                 batch_samples = random.sample(self.triples, batch_size)
-                current = []
-                corrupted = []
+                current = [] # 正样本
+                corrupted = [] # 负样本
                 for sample in batch_samples:
                     corrupted_sample = copy.deepcopy(sample)
-                    pr = np.random.random(1)[0] 
-                    # relation_tph代表给定一个关系，每个实体平均的数量
+                    pr = np.random.random(1)[0] # [0.0, 1.0)
+                    # relation_tph代表给定一个关系，每个头实体对应的平均尾实体的数量
                     p = relation_tph[int(corrupted_sample[1])] / (
                             relation_tph[int(corrupted_sample[1])] + relation_hpt[int(corrupted_sample[1])])
                     '''
@@ -390,12 +388,14 @@ class TransE:
                     '''
                     if pr < p:
                         # change the head entity
-                        corrupted_sample[0] = random.sample(self.entities, 1)[0]
+                        corrupted_sample[0] = random.sample(self.entities, 1)[0] # random.sample(self.entities, 1)：List
                         while corrupted_sample[0] == sample[0]:
                             corrupted_sample[0] = random.sample(self.entities, 1)[0]
                     else:
                         # change the tail entity
                         corrupted_sample[2] = random.sample(self.entities, 1)[0]
+
+                        # 随机抽的尾实体与现在相同时，继续抽
                         while corrupted_sample[2] == sample[2]:
                             corrupted_sample[2] = random.sample(self.entities, 1)[0]
 
@@ -405,8 +405,6 @@ class TransE:
                 current = torch.from_numpy(np.array(current)).long()
                 corrupted = torch.from_numpy(np.array(corrupted)).long()
                 self.update_triple_embedding(current, corrupted)
-
-
 
             for batch in range(valid_batch):
 
@@ -438,7 +436,6 @@ class TransE:
                 corrupted = torch.from_numpy(np.array(corrupted)).long()
                 self.calculate_valid_loss(current, corrupted)
 
-
             end = time.time()
             mean_train_loss = self.loss / n_batches
             mean_valid_loss = self.valid_loss / valid_batch
@@ -464,15 +461,16 @@ class TransE:
 
         fig.savefig(out_file_title + 'TransE_loss_plot.png', bbox_inches='tight')
 
-        with codecs.open(out_file_title + "TransE_entity_" + str(self.dimension) + "dim_batch" + str(batch_size), "w") as f1:
-
+        with codecs.open(out_file_title + "TransE_entity_" + str(self.dimension) + "dim_batch" + str(batch_size),
+                         "w") as f1:
 
             for i, e in enumerate(self.model.ent_embedding.weight):
                 f1.write(str(i) + "\t")
                 f1.write(str(e.cpu().detach().numpy().tolist()))
                 f1.write("\n")
 
-        with codecs.open(out_file_title +"TransE_relation_" + str(self.dimension) + "dim_batch" + str(batch_size), "w") as f2:
+        with codecs.open(out_file_title + "TransE_relation_" + str(self.dimension) + "dim_batch" + str(batch_size),
+                         "w") as f2:
 
             for i, e in enumerate(self.model.rel_embedding.weight):
                 f2.write(str(i) + "\t")
@@ -480,7 +478,7 @@ class TransE:
                 f2.write("\n")
 
         with codecs.open(out_file_title + "loss_record.txt", "w") as f1:
-                f1.write(str(self.train_loss) + "\t" + str(self.validation_loss))
+            f1.write(str(self.train_loss) + "\t" + str(self.validation_loss))
 
     def update_triple_embedding(self, correct_sample, corrupted_sample):
         self.optim.zero_grad()
@@ -534,7 +532,7 @@ class TransE:
                         tail_filter.append(tr)
 
             for i, entity in enumerate(self.entities):
-
+                #  triple[1]：关系 triple[2]：尾实体
                 head_triple = [entity, triple[1], triple[2]]
                 if self.filter:
                     if head_triple in head_filter:
@@ -621,7 +619,6 @@ class TransE:
         return self.hit_10, self.mean_rank
 
 
-
 if __name__ == '__main__':
     file1 = "WN18/wordnet-mlj12-train.txt"
     file2 = "WN18/entity2id.txt"
@@ -629,17 +626,19 @@ if __name__ == '__main__':
     file4 = "WN18/wordnet-mlj12-valid.txt"
 
     # all list
+    # entity : 40943 , relation : 18 , train triple : 141442, , valid triple : 5000
     entity_set, relation_set, triple_list, valid_triple_list = dataloader(file1, file2, file3, file4)
-  
+
     file5 = "WN18_torch_TransE_entity_50dim_batch4800"
     file6 = "WN18_torch_TransE_relation_50dim_batch4800"
 
     file8 = "WN18/wordnet-mlj12-test.txt"
     file9 = "Fb15k_loss_record.txt"
-    transE = TransE(entity_set, relation_set, triple_list, embedding_dim=50, lr=0.01, margin=6.0, norm=1, C=0.25, valid_triple_list=valid_triple_list)
-    transE.data_initialise() # model + optimizer
-    transE.training_run(epochs=100, batch_size=4800, out_file_title="WN18_torch_")
-    transE.insert_test_data(file5, file6, file8)
+    transE = TransE(entity_set, relation_set, triple_list, embedding_dim=50, lr=0.01, margin=6.0, norm=1, C=0.25,
+                    valid_triple_list=valid_triple_list)
+    transE.data_initialise()  # model + optimizer
+    transE.training_run(epochs=1, batch_size=4800, out_file_title="WN18_torch_")
+    transE.insert_test_data(file5, file6, file8) # 加载训练的嵌入权重 + 准备测试数据集
 
     transE.test_run(filter=True)
 
